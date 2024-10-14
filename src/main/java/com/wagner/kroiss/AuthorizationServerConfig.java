@@ -2,8 +2,9 @@ package com.wagner.kroiss;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,8 +15,8 @@ import org.springframework.security.oauth2.config.annotation.web.configurers.Aut
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.CompositeTokenGranter;
 import org.springframework.security.oauth2.provider.TokenGranter;
-import org.springframework.security.oauth2.provider.token.TokenStore;
-import org.springframework.security.oauth2.provider.token.store.redis.RedisTokenStore;
+import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
+import org.springframework.security.oauth2.provider.token.store.KeyStoreKeyFactory;
 
 import java.util.Arrays;
 
@@ -33,7 +34,7 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
     private UserDetailsService userDetailsService;
 
     @Autowired
-    private RedisConnectionFactory redisConnectionFactory;
+    private JwtKeyStoreProperties jwtKeyStoreProperties;
 
     @Override
     public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
@@ -77,15 +78,31 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
                 .allowFormAuthenticationForClients();
     }
 
-
     @Override
     public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
         endpoints
                 .authenticationManager(authenticationManager)
                 .userDetailsService(userDetailsService)
                 .reuseRefreshTokens(false)
-                .tokenStore(redisTokenStore())
+                .accessTokenConverter(jwtAccessTokenConverter())
                 .tokenGranter(tokenGranter(endpoints));
+    }
+
+    @Bean
+    public JwtAccessTokenConverter jwtAccessTokenConverter() {
+        JwtAccessTokenConverter jwtAccessTokenConverter = new JwtAccessTokenConverter();
+        //jwtAccessTokenConverter.setSigningKey("Uk6WfAY4QPrKdyiQ7i0Z8PDtaJoKSq9Ov999999999999999");
+
+        var jksResource = new ClassPathResource(jwtKeyStoreProperties.getPath());
+        var keyStorePass = jwtKeyStoreProperties.getPassword();
+        var keyPairAlias = jwtKeyStoreProperties.getKeypairAlias();
+
+        var keyStoreKeyFactory = new KeyStoreKeyFactory(jksResource, keyStorePass.toCharArray());
+        var keyPair = keyStoreKeyFactory.getKeyPair(keyPairAlias);
+
+        jwtAccessTokenConverter.setKeyPair(keyPair);
+
+        return jwtAccessTokenConverter;
     }
 
     private TokenGranter tokenGranter(AuthorizationServerEndpointsConfigurer endpoints) {
@@ -97,10 +114,6 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
                 pkceAuthorizationCodeTokenGranter, endpoints.getTokenGranter());
 
         return new CompositeTokenGranter(granters);
-    }
-
-    private TokenStore redisTokenStore() {
-        return new RedisTokenStore(redisConnectionFactory);
     }
 
 }
