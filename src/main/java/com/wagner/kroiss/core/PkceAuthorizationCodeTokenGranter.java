@@ -1,4 +1,4 @@
-package com.wagner.kroiss;
+package com.wagner.kroiss.core;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

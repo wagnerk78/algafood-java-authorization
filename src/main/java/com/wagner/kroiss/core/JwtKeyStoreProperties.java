@@ -1,4 +1,4 @@
-package com.wagner.kroiss;
+package com.wagner.kroiss.core;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
